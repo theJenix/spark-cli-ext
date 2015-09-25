@@ -1,0 +1,13 @@
+#!/bin/bash
+#
+
+set -e
+
+proj=( $( find . -type d \( -name src ! -path *.build* \) | sed -e "s|/src||g" ) )
+
+for p in ${proj[*]}; do
+    echo "Building $p..."
+    spark-compile $p
+done
+
+echo "All projects in $(pwd) built."

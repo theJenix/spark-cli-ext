@@ -1,0 +1,59 @@
+#!/bin/bash
+#
+
+set -e
+
+# Can pass in project folder
+if [ "$1" != "" ]; 
+then
+    if [ ! -e "$1" ];
+    then
+        echo "Project '$1' does not exist."
+        exit 1
+    fi
+    pushd $1 > /dev/null
+else
+    pushd . > /dev/null
+fi
+
+if [ ! -e src ];
+then
+    echo "No Spark project found."
+    popd > /dev/null
+    exit 1
+fi
+
+build_dir=.build/spark
+filter_cond="-name *.h -o -name *.cpp -o -name *.c -o -name *.ino"
+
+#find -L lib -type d -exec sh -c "echo {} | grep -v -f .spark.ignore" \;
+
+if [ -e lib ];
+then
+    files=$( echo $(find -L lib \( $filter_cond \) -exec sh -c "test ! -e .spark.ignore && echo {} || echo {} | grep -v -f .spark.ignore" \; ) \
+                  $(find -L src \( $filter_cond \) -exec sh -c "test ! -e .spark.ignore && echo {} || echo {} | grep -v -f .spark.ignore" \; ) );
+else
+
+    files=$( echo $(find -L src \( $filter_cond \) -exec sh -c "test ! -e .spark.ignore && echo {} || echo {} | grep -v -f .spark.ignore" \; ) );
+fi
+
+spark compile $files
+
+if ls *.bin 1> /dev/null 2>&1;
+then
+    echo "Firmware built from sources"
+    if [ -e $build_dir ];
+    then
+        rm -rf $build_dir
+    fi
+    mkdir -p $build_dir
+    mv *.bin $build_dir
+    echo "Firmware moved to build dir \"$build_dir\""
+    ret=0
+else
+    echo "Failed to build firmware."
+    ret=1
+fi
+
+popd > /dev/null
+exit $ret
